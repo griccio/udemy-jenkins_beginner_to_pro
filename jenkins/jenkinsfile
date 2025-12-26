@@ -1,0 +1,15 @@
+pipeline {
+    agent any
+    stages {
+        stage("clean up"){
+            steps  {
+                deleteDir()
+            }
+        }
+        stage("Clone Repo")
+    }
+
+
+
+    
+}
