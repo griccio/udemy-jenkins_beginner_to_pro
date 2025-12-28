@@ -1,0 +1,47 @@
+
+pipeline {
+    agent any
+    stages {
+        stage('Check Tomcat by name') {
+            steps {
+                script {
+                    def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' https://cmc-besc.net || echo '000'", returnStdout: true).trim()
+                    echo "Il valore di status e': ${status}"
+                    if (status != '200') {
+                        echo 'Tomcat non è attivo!'
+                    }else{
+                        echo 'Tomcat è attivo!'
+                        sshagent(credentials: ['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                          sh '''
+                              java -version
+                              git -v
+                            '''
+                        }    
+                    }
+                }
+            }
+        }
+
+        stage('Check Tomcat by ip') {
+            steps {
+                script {
+                    def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://46.62.201.135:8888 || echo '000'", returnStdout: true).trim()
+                    echo "Il valore di status e': ${status}"
+                    if (status != '200') {
+                        echo 'Tomcat non è attivo!'
+                    }else{
+                        echo 'Tomcat è attivo!'
+                        sshagent(credentials: ['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                          sh '''
+                              java -version
+                              git -v
+                            '''
+                        }    
+                    }
+                }
+            }
+        }
+
+
+    }
+}

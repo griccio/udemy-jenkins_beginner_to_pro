@@ -1,12 +1,20 @@
 pipeline {
     agent any
     stages {
+        //cancello il workspace
         stage("clean up"){
             steps  {
                 deleteDir()
             }
+           
         }
-        stage("Clone Repo")
+        
+        stage("BuildClone Repo") {
+            steps {
+                echo "clone repo"
+                sh "git clone "
+            }
+        }
     }
 
 

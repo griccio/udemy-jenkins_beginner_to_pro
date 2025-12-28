@@ -1,0 +1,140 @@
+
+pipeline {
+    agent any
+    stages {
+
+        
+        
+         stage('Clean Up') {
+            //cancello tutto quello che è presente nel workspace
+            //$JENKINS_HOME/workspace/<job_name>
+            steps {
+               deleteDir()
+            }
+        }
+
+
+        stage('Shutdown Tomcat') {
+            steps {
+                script {
+                    def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://46.62.201.135:8888 || echo '000'", returnStdout: true).trim()
+                    echo "Il valore di status e': ${status}"
+                    if (status != '200') {
+                        echo 'Tomcat non è attivo!'
+                    }else{
+                        echo 'Tomcat è attivo!'
+                        // Esegui comandi all'interno del blocco sshagent
+                        // root e relativa chiave privata sono già presenti nella Jenkins Credential
+                        sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                            sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 "
+                                    /home/frabemar/lcm_test/tomcat9_8888/bin/shutdown.sh
+                                    echo 'Attendo che Tomcat si arresti...'
+                                    while nc -z localhost 8888; do
+                                        echo 'Tomcat test è ancora attivo, attendo 5 secondi...'
+                                        sleep 5
+                                    done
+                                    echo 'Tomcat test è giu'!'
+                                "
+                            '''
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+
+        stage('Cancello vecchio file') {
+                    steps {
+                        sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                           sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 
+                                "
+                                    rm -rf /home/frabemar/lcm_test/tomcat9_8888/webapps/ROOT
+                                    rm -f /home/frabemar/lcm_test/tomcat9_8888/webapps/ROOT.war
+                                    echo 'ho cancellato la vecchia versione di lcm_mali su test.'
+                                    ls -la /home/frabemar/lcm_test/tomcat9_8888/webapps
+                                "
+                            '''
+                        }
+                    }
+            }
+
+
+        stage('carico nuovo file dalla cartella jenkins/lcm_test') {
+            steps {
+                sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                    sh '''
+                        scp c:/jenkins/lcm_test/ROOT.jar root@46.62.201.135:/home/frabemar/lcm_test/tomcat9_8888/webapps/ROOT.war
+                        echo 'ho caricato la nuova versione di lcm_mali su test.'
+                           ls -la /home/frabemar/lcm_test/tomcat9_8888/webapps     
+                        '''
+                }
+            }
+        }
+
+                stage('Cambio i permessi') {
+                    steps {
+                        sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                           sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 
+                                "
+                                   chown frabemar:frabemar /home/frabemar/lcm_test/tomcat9_8888/webapps/ROOT.war
+                                   echo 'ho modificato i permessi.'
+                                   ls -la /home/frabemar/lcm_test/tomcat9_8888/webapps
+                                "
+                            '''
+                        }
+                    }
+            }
+
+
+        stage('startup Tomcat') {
+            steps {
+                script {
+                    def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://46.62.201.135:8888 || echo '000'", returnStdout: true).trim()
+                    
+                    if (status == '200') {
+                        echo "Tomcat  è attivo!"
+                    }else{
+                        echo 'Tomcat è attivo!'
+                        // Esegui comandi all'interno del blocco sshagent:
+                        // avvio tomcat
+                        // attendo che si avvii correttamente
+                        // root e relativa chiave privata sono già presenti nella Jenkins Credential
+                        sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                            sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 
+                                "
+                                    /home/frabemar/lcm_test/tomcat9_8888/bin/startup.sh
+                                    echo 'Attendo che Tomcat si avvii...'
+                                    while ! nc -z localhost 8888; do
+                                        echo 'Tomcat è ancora giù, attendo 5 secondi...'
+                                        sleep 5
+                                    done
+                                    echo 'Tomcat è su!'
+                                "
+                            '''
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+
+        
+         stage('END') {
+            //cancello tutto quello che è presente nel workspace
+            //$JENKINS_HOME/workspace/<job_name>
+            steps {
+               deleteDir()
+            }
+        }
+
+       
+    }
+}

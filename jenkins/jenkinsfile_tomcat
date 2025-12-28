@@ -1,0 +1,117 @@
+
+pipeline {
+    agent any
+    stages {
+
+        stage('Build') {
+            steps {
+                sh 'echo war file is created'
+            }
+        }
+
+        
+
+
+
+        stage('Shutdown Tomcat') {
+            steps {
+                script {
+                    def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' https://cmc-besc.net", returnStdout: true).trim()
+                    
+                    if (status != '200') {
+                        error "Tomcat non è attivo!"
+                    }else{
+                        echo 'Tomcat è attivo!'
+                        // Esegui comandi all'interno del blocco sshagent
+                        // root e relativa chiave privata sono già presenti nella Jenkins Credential
+                        sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                            sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 "
+                                    /home/frabemar/lcm_mali/tomcat9_8090/bin/shutdown.sh
+                                    echo 'Attendo che Tomcat si arresti...'
+                                    while nc -z localhost 8090; do
+                                        echo 'Tomcat è ancora attivo, attendo 5 secondi...'
+                                        sleep 5
+                                    done
+                                    echo 'Tomcat è giu'!'
+                                "
+                            '''
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+
+        stage('Cancello vecchio file') {
+                    steps {
+                        sshagent(['your-ssh-credential-id']) {
+                           sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 
+                                "
+                                    rm -rf /home/frabemar/lcm_mali/tomcat9_8090/webapps/ROOT
+                                     rm -rf /home/frabemar/lcm_mali/tomcat9_8090/webapps/ROOT.war
+                                    echo 'ho cancellato la vecchia versione di lcm_mali.'
+                                "
+                            '''
+                        }
+                    }
+            }
+
+
+        stage('carico nuovo file dalla cartella jenkins/lcm_mali') {
+            steps {
+                sshagent(['your-ssh-credential-id']) {
+                    sh '''
+                            ssh -o StrictHostKeyChecking=no root@46.62.201.135 
+                                "
+                                     rm -rf /home/frabemar/lcm_mali/tomcat9_8090/webapps/ROOT.war
+                                     scp c:/jenkins/lcm_mali/ROOT.jar root@46.62.201.135:/home/frabemar/lcm_mali/tomcat9_8090/webapps
+                                    echo 'ho copiato la nuova versione'
+                                "
+                        '''
+                }
+            }
+        }
+
+
+        stage('startup Tomcat') {
+            steps {
+                script {
+                    def status = sh(script: "curl -s -o /dev/null -w '%{http_code}' https://cmc-besc.net", returnStdout: true).trim()
+                    
+                    if (status == '200') {
+                        error "Tomcat  è attivo!"
+                    }else{
+                        echo 'Tomcat è attivo!'
+                        // Esegui comandi all'interno del blocco sshagent:
+                        // avvio tomcat
+                        // attendo che si avvii correttamente
+                        // root e relativa chiave privata sono già presenti nella Jenkins Credential
+                        sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                            sh '''
+                                ssh -o StrictHostKeyChecking=no root@46.62.201.135 
+                                "
+                                    /home/frabemar/lcm_mali/tomcat9_8090/bin/startup.sh
+                                    echo 'Attendo che Tomcat si avvii...'
+                                    while ! nc -z localhost 8090; do
+                                        echo 'Tomcat è ancora giù, attendo 5 secondi...'
+                                        sleep 5
+                                    done
+                                    echo 'Tomcat è su!'
+                                "
+                            '''
+                        }
+
+
+                    }
+                }
+            }
+        }
+
+
+       
+    }
+}

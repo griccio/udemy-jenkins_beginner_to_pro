@@ -1,0 +1,31 @@
+
+pipeline {
+    agent any
+    stages {
+        stage('Esegui comandi via SSH') {
+            steps {
+                sshagent(['9d339cc2-bfdc-4ee8-9439-f94768ceb3c5']) {
+                    sh '''ssh -o StrictHostKeyChecking=no root@46.62.201.135 << EOF
+                        echo "Connessione riuscita "
+                        ls -la /home/frabemar
+                        cd /home/frabemar/lcm_test/tomcat9_8888/bin
+                        echo "cartella di test "
+                        pwd
+                        ls  -la
+                        ./startup.sh
+                        '''
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Pipeline completata con successo!"
+        }
+        failure {
+            echo "Pipeline fallita. Verifica il servizio Tomcat o la connessione SSH."
+        }
+    }
+
+}
