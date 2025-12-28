@@ -9,15 +9,36 @@ pipeline {
            
         }
         
-        stage("BuildClone Repo") {
+        stage("Clone Repo") {
             steps {
                 echo "clone repo"
-                sh "git clone "
+                sh "git clone https://github.com/griccio/udemy-jenkins_beginner_to_pro.git"
             }
         }
-    }
 
-
+        stage("Build") {
+            steps {
+                echo "build"
+                //mi muovo nella cartella del progetto
+                //ed eseguo il comando mvn clean install
+                dir("udemy-jenkins_beginner_to_pro") {
+                    sh "mvn clean install"
+                }
+               
+            }
+        }
 
     
+    stage("Test") {
+            steps {
+                echo "build"
+                //mi muovo nella cartella del progetto
+                //ed eseguo il comando mvn clean install
+                dir("udemy-jenkins_beginner_to_pro") {
+                    sh "mvn test"
+                }
+               
+            }
+        }
+}
 }
